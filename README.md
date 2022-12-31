@@ -1,6 +1,7 @@
 # Various gridfinity blocks
 
 A selection of gridfinity blocks that I find useful:
+- A gridfinity shelf for the honeycomb storage wall (https://www.printables.com/model/152592-honeycomb-storage-wall)
 - Some CA glue holders for the zap-a-gap brand
 
 # Based on: Gridfinity for CADQuery
