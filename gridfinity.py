@@ -85,7 +85,7 @@ magnet_depth = 2.4 #mm
 ## Screw boreholes
 
 # Diameter of the counterbore hole for screws.
-screw_diameter = 3.5 #mm
+screw_diameter = 3.0 #mm
 
 # Maximum depth of the screw borehole.
 # 
@@ -214,15 +214,83 @@ def gridfinity_block_lip(self, width, height, screw_depth=screw_depth, holes=Tru
                 continue
     
     if holes:
-        with_counterbore = filleted.faces("<Z")\
-            .workplane()\
-            .rarray(grid_unit, grid_unit, width, height)\
-            .rect(grid_unit - magnet_inset * 2, grid_unit - magnet_inset * 2)\
-            .vertices()\
-            .cboreHole(screw_diameter, magnet_diameter, magnet_depth, screw_depth)
+        with_counterbore = (filleted.faces("<Z")
+            .workplane()
+            .rarray(grid_unit, grid_unit, width, height)
+            .rect(grid_unit - magnet_inset * 2, grid_unit - magnet_inset * 2)
+            .vertices()
+            .cboreHoleTweak(screw_diameter, magnet_diameter, magnet_depth, screw_depth, tweakDepth=0.2))
 
         return with_counterbore
     else:
         return filleted
 
 cq.Workplane.gridfinity_block_lip = gridfinity_block_lip
+
+# Cloned and adjusted from cq.py. There is surely a better way.
+from cadquery.occ_impl.geom import Vector
+from cadquery.occ_impl.shapes import Solid
+
+def cboreHoleTweak(
+        self,
+        diameter,
+        cboreDiameter,
+        cboreDepth,
+        depth=None,
+        clean=True,
+        tweakDepth=0.2
+):
+    """
+    Makes a counterbored hole for each item on the stack.
+    :param diameter: the diameter of the hole
+    :type diameter: float > 0
+    :param cboreDiameter: the diameter of the cbore
+    :type cboreDiameter: float > 0 and > diameter
+    :param cboreDepth: depth of the counterbore
+    :type cboreDepth: float > 0
+    :param depth: the depth of the hole
+    :type depth: float > 0 or None to drill thru the entire part.
+    :param boolean clean: call :py:meth:`clean` afterwards to have a clean shape
+    The surface of the hole is at the current workplane plane.
+    One hole is created for each item on the stack.  A very common use case is to use a
+    construction rectangle to define the centers of a set of holes, like so::
+        s = (
+            Workplane()
+            .box(2, 4, 0.5)
+            .faces(">Z")
+            .workplane()
+            .rect(1.5, 3.5, forConstruction=True)
+            .vertices()
+            .cboreHole(0.125, 0.25, 0.125, depth=None)
+        )
+    This sample creates a plate with a set of holes at the corners.
+    **Plugin Note**: this is one example of the power of plugins. Counterbored holes are quite
+    time consuming to create, but are quite easily defined by users.
+    see :py:meth:`cskHole` to make countersinks instead of counterbores
+    """
+    if depth is None:
+        depth = self.largestDimension()
+
+    boreDir = Vector(0, 0, -1)
+    center = Vector()
+    # first make the hole
+    hole = Solid.makeCylinder(
+        diameter / 2.0, depth, center, boreDir
+    )  # local coordinates!
+
+    # add the counter bore
+    cbore = Solid.makeCylinder(cboreDiameter / 2.0, cboreDepth + tweakDepth, Vector(), boreDir)
+    r = hole.fuse(cbore)
+
+    tweak = (cq.Solid.makeBox(
+        cboreDiameter,
+        (cboreDiameter - diameter) / 2,
+        tweakDepth)
+             .translate(
+                 (-cboreDiameter / 2, -(cboreDiameter / 2), -(cboreDepth + tweakDepth))))
+
+    r = r.cut(tweak).cut(tweak.mirror("XZ"))
+    
+    return self.cutEach(lambda loc: r.moved(loc), True, clean)
+
+cq.Workplane.cboreHoleTweak = cboreHoleTweak
