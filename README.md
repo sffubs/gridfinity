@@ -1,4 +1,9 @@
-# Gridfinity for CADQuery
+# Various gridfinity blocks
+
+A selection of gridfinity blocks that I find useful:
+- Some CA glue holders for the zap-a-gap brand
+
+# Based on: Gridfinity for CADQuery
 
 This is a port of Zach Freedman's [Gridfinity](https://www.youtube.com/watch?v=ra_9zU-mnl8&t=1067s)
 storage system to [CADQuery](https://github.com/CadQuery/cadquery).
