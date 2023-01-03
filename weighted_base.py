@@ -7,14 +7,16 @@ import cadquery as cq
 # I skipped the screw holes and weights because I don't need them.
 # I should have used gridfinity.py instead really.
 
-numX = 5
-numY = 3
-
 nestingDepth = 5
 nestingClearance = 0.25
 magnetThiccness = 2.4
 magnetDiameter = 6.3
 baseThickness = 5.2
+
+weight_large_x = 19.2
+weight_large_y = 23.5
+weight_clearance = 1
+weight_depth = 4.4
 
 def lip():
     profile = (cq.Sketch()
@@ -37,53 +39,44 @@ def lip():
 
     return lip
 
-#screwholes = (cq.Workplane("top").center(-21 + 8, -21 + 8).circle(3/2)
-#    .center(0, 0).mirrorX().mirrorY().extrude(3))
-    
-magnetHoles = (cq.Workplane("top")
-    .center(-21 + 8, -21 + 8).circle(magnetDiameter/2)
-    .center(21 - 8, 21 - 8).mirrorX().mirrorY()
-    .extrude(-magnetThiccness))
+def weighted_base(numX, numY):
+    magnetHoles = (
+        cq.Workplane("top")
+        .center(-21 + 8, -21 + 8).circle(magnetDiameter/2)
+        .center(21 - 8, 21 - 8).mirrorX().mirrorY()
+        .extrude(-magnetThiccness))
 
-base = (cq.Workplane("top").rect(42, 42).extrude(-baseThickness).cut(magnetHoles))
+    base = (cq.Workplane("top").rect(42, 42).extrude(-baseThickness).cut(magnetHoles))
 
-del magnetHoles
+    plate = lip().union(base)
 
-plate = lip().union(base)
+    model = cq.Workplane("top")
 
-del base
+    for i in range(0, numX):
+        for j in range(0, numY):
+            model = model.union(plate.translate((42 * i, 0, 42 * j)))
 
-model = cq.Workplane("top")
+    trimProfile = cq.Workplane("top").center((42 * numX) / 2 - 21, (-42 * numY) / 2 + 21).placeSketch(
+        cq.Sketch().rect(42 * numX, 42 * numY).vertices().fillet(4))
 
-for i in range(0, numX):
-    for j in range(0, numY):
-        model = model.union(plate.translate((42 * i, 0, 42 * j)))
+    model = model.intersect(trimProfile.extrude(5).union(trimProfile.extrude(-baseThickness)))
 
-trimProfile = cq.Workplane("top").center((42 * numX) / 2 - 21, (-42 * numY) / 2 + 21).placeSketch(
-    cq.Sketch().rect(42 * numX, 42 * numY).vertices().fillet(4))
+    weight_large = (
+        model.faces("<Y")
+        .workplane()
+        .rect(weight_large_x + weight_clearance, weight_large_y + weight_clearance)
+        .extrude(-weight_depth, combine=False)
+        .rotate((0, 0, 0), (0, 1, 0), 45))
 
-model = model.intersect(trimProfile.extrude(5).union(trimProfile.extrude(-baseThickness)))
+    for i in range(0, numX):
+        for j in range(0, numY):
+            model = model.cut(weight_large.translate((42 * i, 0, 42 * j)))
 
-del trimProfile
+    return model
 
-del plate
+for i in range(1, 8):
+    for j in range(1, i + 1):
+        model = weighted_base(i, j)
 
-weight_large_x = 19.2
-weight_large_y = 23.5
-weight_clearance = 1
-weight_depth = 4.4
-
-weight_large = (model.faces("<Y")
-                .workplane()
-                .rect(weight_large_x + weight_clearance, weight_large_y + weight_clearance)
-                .extrude(-weight_depth, combine=False)
-                .rotate((0, 0, 0), (0, 1, 0), 45))
-
-for i in range(0, numX):
-    for j in range(0, numY):
-        model = model.cut(weight_large.translate((42 * i, 0, 42 * j)))
-
-del weight_large
-
-cq.exporters.export(model, "weighted_base.step")
-cq.exporters.export(model, "weighted_base.stl")
+        cq.exporters.export(model, "weighted_base_%d_by_%d.step" % (i, j))
+        cq.exporters.export(model, "weighted_base_%d_by_%d.stl" % (i, j))
