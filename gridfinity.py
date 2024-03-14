@@ -50,7 +50,8 @@ baseplate_mating_depth = 4.4 #mm
 #
 # This is less than the baseplate mating depth because blocks have an inset top
 # chamfer.
-stacking_mating_depth = 3.796 #mm
+#stacking_mating_depth = 3.796 #mm
+stacking_mating_depth = 4.4 #mm
 
 # Inset of the XY profile for the non-chamfered part of the mating surface
 # on blocks.
@@ -158,11 +159,35 @@ def gridfinity_block_stack(self, width, height):
     Face dimensions must match the width and height given here."""
 
     depth = self.faces(">Z").val().Center().toTuple()[2]
+    
+    #inset = cq.Workplane("XY")\
+    #    .placeSketch(inset_profile(width, height, block_mating_inset))\
+    #    .extrude(stacking_mating_depth * -1)\
+    #    .translate([0, 0, depth])
 
-    inset = cq.Workplane("XY")\
-        .placeSketch(inset_profile(width, height, block_mating_inset))\
-        .extrude(stacking_mating_depth * -1)\
-        .translate([0, 0, depth])
+    #profile = (cq.Sketch()
+    #           .polygon([(0, 0), (0, 5), (2.4, 2.6), (2.4, 0.8), (3.2, 0)])
+    #           .offset(0.25))
+    profile = (cq.Sketch()
+               .polygon([(0, 0), (0, 4.4), (1.9, 2.5), (1.9, 0.7), (2.6, 0), (0, 0)]))
+
+    #path = (self.faces(">Z").workplane()
+    #        .moveTo((-42 * width) / 2 + 4, (42 * height) / 2)
+    #        .hLine(42 * width - 8).tangentArcPoint((4, -4))
+    #        .vLine(-42 * height + 8).tangentArcPoint((-4, -4))
+    #        .hLine(-42 * width + 8).tangentArcPoint((-4, 4))
+    #        .vLine(42 * height - 8).tangentArcPoint((4, 4)).close())
+    
+    path = (cq.Workplane("XY")
+            .placeSketch(inset_profile(width, height, block_spacing))
+            .extrude(1)).faces(">Z").wires()
+
+    lip = (cq.Workplane("YZ")
+           .center(-(42 * height - block_spacing) / 2, depth)
+           .placeSketch(profile)
+           .sweep(path))
+
+    return self.union(lip)
     
     return self.faces(">Z")\
         .cut(inset)\
@@ -219,7 +244,7 @@ def gridfinity_block_lip(self, width, height, screw_depth=screw_depth, holes=Tru
             .rarray(grid_unit, grid_unit, width, height)
             .rect(grid_unit - magnet_inset * 2, grid_unit - magnet_inset * 2)
             .vertices()
-            .cboreHoleTweak(screw_diameter, magnet_diameter, magnet_depth, screw_depth, tweakDepth=0.2))
+            .cboreHoleTweak(screw_diameter, magnet_diameter, magnet_depth, screw_depth, tweakDepth=0.28))
 
         return with_counterbore
     else:

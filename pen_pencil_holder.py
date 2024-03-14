@@ -18,8 +18,7 @@ clearance= 0.15
 
 block = (
     cq.Workplane("XY")
-    .gridfinity_block(block_x, block_y, block_height)
-    .gridfinity_block_stack(block_x, block_y))
+    .gridfinity_block(block_x, block_y, block_height))
 
 cutout = (
     block.faces(">Z")
@@ -31,9 +30,12 @@ block = (
     block
     .rarray(diameter + (clearance + taper_pad) * 2 + spacing, diameter + (clearance + taper_pad) * 2 + spacing, 3, 3)
     .eachpoint(lambda loc: cutout.val().moved(loc), combine="cut")
-    .gridfinity_block_lip(block_x, block_y, screw_depth=3))
+    .gridfinity_block_lip(block_x, block_y, screw_depth=3)
+    .gridfinity_block_stack(block_x, block_y))
 
 #block = block.faces(">Z").chamfer(0.5)
+
+#del block
 
 del cutout
 
